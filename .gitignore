@@ -1,0 +1,7 @@
+circom
+node_modules
+build
+zkey
+ptau
+soroban-examples
+.env
