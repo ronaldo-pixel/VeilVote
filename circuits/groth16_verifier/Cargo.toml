@@ -1,5 +1,5 @@
 [package]
-name    = "soroban-groth16-bn254-verifier"
+name = "soroban-groth16-bn254-verifier"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,21 +7,21 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-soroban-sdk = { version = "25.0.0", features = ["hazmat-crypto"] }
+soroban-sdk = { version = "26", features = ["hazmat-crypto"] }
 
 [dev-dependencies]
-soroban-sdk = { version = "25.0.0", features = ["hazmat-crypto", "testutils"] }
+soroban-sdk = { version = "26", features = ["hazmat-crypto", "testutils"] }
 
 [profile.release]
-opt-level       = "z"
+opt-level = "z"
 overflow-checks = true
-debug           = 0
-strip           = "symbols"
+debug = 0
+strip = "symbols"
 debug-assertions = false
-panic           = "abort"
-codegen-units   = 1
-lto             = true
+panic = "abort"
+codegen-units = 1
+lto = true
 
 [profile.release-with-logs]
-inherits         = "release"
+inherits = "release"
 debug-assertions = true

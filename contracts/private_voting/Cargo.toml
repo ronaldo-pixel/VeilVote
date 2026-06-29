@@ -1,0 +1,28 @@
+[package]
+name = "private_voting"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+soroban-sdk = { version = "26", features = ["alloc", "hazmat-crypto"] }
+
+ark-ff = { version = "0.5", default-features = false }
+ark-ed-on-bn254 = { version = "0.5", default-features = false }
+
+[dev-dependencies]
+soroban-sdk = { version = "26", features = ["testutils", "hazmat-crypto"] }
+
+[profile.release]
+opt-level = "z"
+overflow-checks = true
+debug = 0
+strip = "symbols"
+debug-assertions = false
+panic = "abort"
+codegen-units = 1
+lto = true
+

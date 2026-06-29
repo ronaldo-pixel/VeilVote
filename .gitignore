@@ -8,3 +8,6 @@ soroban-examples
 printdir.py
 run.txt
 target
+bin
+keys.json
+compare.js

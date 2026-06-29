@@ -83,6 +83,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ark-ed-on-bn254"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "962e24e25cbdcaabe619c281a62bccc885f778b188129d6a02875c2671666219"
+dependencies = [
+ "ark-bn254",
+ "ark-ec",
+ "ark-ff",
+ "ark-std",
+]
+
+[[package]]
 name = "ark-ff"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1056,6 +1068,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "private_voting"
+version = "0.1.0"
+dependencies = [
+ "ark-ed-on-bn254",
+ "ark-ff",
+ "soroban-sdk",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1418,13 +1439,6 @@ dependencies = [
  "serde_json",
  "stellar-xdr",
  "syn",
-]
-
-[[package]]
-name = "soroban-groth16-bn254-verifier"
-version = "0.1.0"
-dependencies = [
- "soroban-sdk",
 ]
 
 [[package]]
