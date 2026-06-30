@@ -280,4 +280,38 @@ impl VotingContract {
 
         Ok(submitted)
     }
+
+    pub fn get_partial_decrypts(
+        e: Env,
+        proposal_id: u32,
+        keyholder_idx: u32,
+    ) -> Result<Vec<CurvePoint>, VoteError> {
+        if keyholder_idx >= types::NUM_KEYHOLDERS {
+            return Err(VoteError::InvalidKeyholderIndex);
+        }
+
+        let proposal: Proposal = e
+            .storage()
+            .persistent()
+            .get(&DataKey::Proposal(proposal_id))
+            .ok_or(VoteError::ProposalNotFound)?;
+
+        let mut partials = Vec::new(&e);
+
+        for option_idx in 0..proposal.options.len() {
+            let partial: CurvePoint = e
+                .storage()
+                .persistent()
+                .get(&DataKey::PartialDecrypt(
+                    proposal_id,
+                    keyholder_idx,
+                    option_idx,
+                ))
+                .ok_or(VoteError::WrongStatus)?; // Prefer a MissingPartialDecrypt error if you add one.
+
+            partials.push_back(partial);
+        }
+
+        Ok(partials)
+    }
 }
