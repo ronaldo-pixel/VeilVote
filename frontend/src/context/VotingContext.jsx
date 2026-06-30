@@ -134,40 +134,78 @@ async function simulateCall(functionName, args = [], userAddress = null) {
 
 // ── Helper for Soroban write calls ───────────────────────────────────────────
 async function invokeWrite(functionName, args, signerAddress) {
-  const RPC_URL    = import.meta.env.VITE_SOROBAN_RPC_URL;
+  const RPC_URL = import.meta.env.VITE_SOROBAN_RPC_URL;
   const PASSPHRASE = import.meta.env.VITE_NETWORK_PASSPHRASE;
-  const CONTRACT   = import.meta.env.VITE_CONTRACT_ID;
+  const CONTRACT = import.meta.env.VITE_CONTRACT_ID;
 
-  const server   = new Server(RPC_URL);
+  const server = new Server(RPC_URL);
   const contract = new Contract(CONTRACT);
 
+  // Build transaction
   const account = await server.getAccount(signerAddress);
-  const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase: PASSPHRASE })
+
+  const tx = new TransactionBuilder(account, {
+    fee: BASE_FEE,
+    networkPassphrase: PASSPHRASE,
+  })
     .addOperation(contract.call(functionName, ...args))
     .setTimeout(30)
     .build();
 
-  const sim = await server.simulateTransaction(tx);
-  if (sim.error) throw new Error(`[${functionName}] simulation error: ${sim.error}`);
+  // Simulate
+  const simulation = await server.simulateTransaction(tx);
 
-  const prepared  = assembleTransaction(tx, sim);
-  const signedXdr = await signTransaction(prepared.toXDR(), { networkPassphrase: PASSPHRASE });
-  const submitted = await server.sendTransaction(
-    TransactionBuilder.fromXDR(signedXdr, PASSPHRASE)
+  if (simulation.error) {
+    throw new Error(`[${functionName}] Simulation failed: ${simulation.error}`);
+  }
+
+  // Assemble with Soroban footprint/resource fees
+  const txToSign = assembleTransaction(tx, simulation).build();
+
+  // Ask Freighter to sign
+  const { signedTxXdr, error } = await signTransaction(txToSign.toXDR(), {
+    networkPassphrase: PASSPHRASE,
+  });
+
+  if (error) {
+    throw new Error(`[${functionName}] Signing failed: ${error}`);
+  }
+
+  // Recreate signed transaction
+  const signedTx = TransactionBuilder.fromXDR(
+    signedTxXdr,
+    PASSPHRASE
   );
 
-  if (submitted.status === 'ERROR') {
-    throw new Error(`[${functionName}] submit error: ${JSON.stringify(submitted.errorResult)}`);
+  // Submit transaction
+  const response = await server.sendTransaction(signedTx);
+
+  if (response.status === "ERROR") {
+    throw new Error(
+      `[${functionName}] Submission failed: ${JSON.stringify(response.errorResult)}`
+    );
   }
 
-  // Poll until confirmed
+  // Wait for confirmation
   for (let i = 0; i < 30; i++) {
-    await new Promise(r => setTimeout(r, 2000));
-    const status = await server.getTransaction(submitted.hash);
-    if (status.status === 'SUCCESS') return status;
-    if (status.status === 'FAILED')  throw new Error(`[${functionName}] tx failed: ${submitted.hash}`);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
+    const status = await server.getTransaction(response.hash);
+
+    if (status.status === "SUCCESS") {
+      return status;
+    }
+
+    if (status.status === "FAILED") {
+      throw new Error(
+        `[${functionName}] Transaction failed (${response.hash})`
+      );
+    }
   }
-  throw new Error(`[${functionName}] timed out: ${submitted.hash}`);
+
+  throw new Error(
+    `[${functionName}] Transaction timed out (${response.hash})`
+  );
 }
 
 // ── Helper to extract return value from Soroban transaction status ───────────
@@ -227,9 +265,9 @@ export const VotingProvider = ({ children }) => {
   // ── Wallet Auto-restore ────────────────────────────────────────────────────
   useEffect(() => {
     isConnected().then(connected => {
-      if (connected) {
+      if (connected && connected.isConnected) {
         requestAccess().then(result => {
-          const address = typeof result === 'string' ? result : result.address;
+          const address = result && result.address;
           if (address) {
             userAddressRef.current = address;
             setUserAddress(address);
@@ -249,10 +287,13 @@ export const VotingProvider = ({ children }) => {
     setError(null);
     try {
       const connected = await isConnected();
-      if (!connected) throw new Error('Freighter not installed — get it from https://freighter.app');
+      if (!connected || !connected.isConnected) {
+        throw new Error('Freighter not installed — get it from https://freighter.app');
+      }
 
       const result = await requestAccess();
-      const address = typeof result === 'string' ? result : result.address;
+      if (result.error) throw new Error(result.error);
+      const address = result.address;
       if (!address) throw new Error('No address returned from Freighter');
 
       userAddressRef.current = address;
@@ -435,10 +476,13 @@ export const VotingProvider = ({ children }) => {
         ? xdr.ScVal.scvVec([xdr.ScVal.scvSymbol('Quadratic')])
         : xdr.ScVal.scvVec([xdr.ScVal.scvSymbol('Normal')]);
 
+      const optionsScVal = xdr.ScVal.scvVec(
+        options.map(opt => xdr.ScVal.scvString(opt))
+      );
       const args = [
         new Address(address).toScVal(),
         nativeToScVal(description, { type: 'string' }),
-        nativeToScVal(options, { type: 'vec', elements: 'string' }),
+        optionsScVal,
         modeScVal,
         nativeToScVal(Number(duration), { type: 'u32' }),
         nativeToScVal(BigInt(eligibilityThreshold ?? 0), { type: 'i128' }),

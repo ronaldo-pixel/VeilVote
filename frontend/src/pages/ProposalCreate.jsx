@@ -163,9 +163,9 @@ const ProposalCreate = () => {
     const allErrors = { ...validateStep(0), ...validateStep(1), ...validateStep(2) };
     if (Object.keys(allErrors).length > 0) { setErrors(allErrors); return; }
     try {
+      const combinedDescription = `${title}\n\n${description}`;
       const newProposal = await createProposal({
-        title,
-        description,
+        description: combinedDescription,
         options,
         votingMode,
         duration: parseInt(duration),

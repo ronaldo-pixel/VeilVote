@@ -4,178 +4,6 @@
    MUI overrides live in App.jsx createTheme().
 ═══════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=IBM+Plex+Mono:wght@400;500&display=swap');
-
-/* ── Design Tokens ───────────────────────────── */
-:root {
-  /* Backgrounds */
-  --bg-base:        #080c10;
-  --bg-surface:     #0d1117;
-  --bg-overlay:     #101820;
-
-  /* Accent Colors */
-  --cyan:           #00f5d4;
-  --cyan-dim:       rgba(0, 245, 212, 0.12);
-  --cyan-glow:      0 0 8px rgba(0, 245, 212, 0.7);
-  --amber:          #ffb800;
-  --amber-dim:      rgba(255, 184, 0, 0.12);
-  --amber-glow:     0 0 8px rgba(255, 184, 0, 0.7);
-  --green-phos:     #39ff14;
-  --green-dim:      rgba(57, 255, 20, 0.12);
-  --green-glow:     0 0 8px rgba(57, 255, 20, 0.7);
-  --red-err:        #ff3c3c;
-  --red-dim:        rgba(255, 60, 60, 0.12);
-  --red-glow:       0 0 8px rgba(255, 60, 60, 0.7);
-
-  /* Text */
-  --text-primary:   #e2e8f0;
-  --text-secondary: #64748b;
-  --text-dim:       #334155;
-
-  /* Borders */
-  --border-base:    #1e2a35;
-  --border-bright:  #2e3e4d;
-
-  /* Typography */
-  --font-mono:      'IBM Plex Mono', 'Courier New', monospace;
-  --font-head:      'Share Tech Mono', 'JetBrains Mono', monospace;
-
-  /* Transitions */
-  --t-fast: 0.1s ease;
-  --t-base: 0.15s ease;
-}
-
-/* ── Reset & Base ────────────────────────────── */
-*, *::before, *::after {
-  box-sizing: border-box;
-}
-
-html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  min-height: 100%;
-  background: var(--bg-base);
-  color: var(--text-primary);
-  font-family: var(--font-mono);
-  font-size: 16px;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Scanline CRT overlay */
-body::before {
-  content: '';
-  pointer-events: none;
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 3px,
-    rgba(0, 0, 0, 0.04) 3px,
-    rgba(0, 0, 0, 0.04) 4px
-  );
-}
-
-#root {
-  width: 100%;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  /* Left terminal gutter line */
-  border-left: 2px solid var(--cyan-dim);
-}
-
-/* ── Typography ──────────────────────────────── */
-h1, h2, h3, h4, h5, h6 {
-  margin: 0;
-  font-family: var(--font-head);
-  font-weight: 400;
-  line-height: 1.2;
-  letter-spacing: 0.05em;
-  color: var(--text-primary);
-}
-
-p { margin: 0; line-height: 1.6; }
-
-a {
-  color: var(--cyan);
-  text-decoration: none;
-  font-family: var(--font-mono);
-  transition: color var(--t-base);
-}
-a:hover { color: #4dfce8; text-decoration: none; }
-
-/* ── Scrollbar ───────────────────────────────── */
-::-webkit-scrollbar        { width: 6px; height: 6px; }
-::-webkit-scrollbar-track  { background: var(--bg-base); }
-::-webkit-scrollbar-thumb  { background: var(--border-base); border-radius: 0; }
-::-webkit-scrollbar-thumb:hover { background: var(--cyan); }
-
-/* ── Buttons (non-MUI) ───────────────────────── */
-button {
-  font-family: var(--font-head);
-  font-size: 0.7rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  background: transparent;
-  color: var(--cyan);
-  border: 1px solid var(--cyan);
-  border-radius: 2px;
-  padding: 6px 14px;
-  cursor: pointer;
-  transition: background var(--t-base), box-shadow var(--t-base);
-}
-button:hover {
-  background: rgba(0, 245, 212, 0.07);
-  box-shadow: var(--cyan-glow);
-}
-button:active  { transform: translateY(1px); }
-button:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-/* ── Form Elements (non-MUI) ─────────────────── */
-input, textarea, select {
-  background: #080c10;
-  color: var(--text-primary);
-  border: 1px solid var(--border-base);
-  border-radius: 2px;
-  padding: 6px 10px;
-  font-family: var(--font-mono);
-  font-size: 0.82rem;
-  transition: border-color var(--t-base), box-shadow var(--t-base);
-}
-input:focus, textarea:focus, select:focus {
-  outline: none;
-  border-color: var(--cyan);
-  box-shadow: 0 0 0 2px rgba(0, 245, 212, 0.15);
-}
-input::placeholder, textarea::placeholder {
-  color: var(--text-dim);
-}
-
-/* ── Status Badges ───────────────────────────── */
-.status-badge {
-  display: inline-block;
-  font-family: var(--font-head);
-  font-size: 0.6rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  border: 1px solid currentColor;
-  border-radius: 2px;
-  padding: 2px 6px;
-  animation: glowPulse 2s ease-in-out infinite;
-}
-.status-badge--active   { color: var(--cyan);       box-shadow: var(--cyan-glow); }
-.status-badge--pending  { color: var(--amber);      box-shadow: var(--amber-glow); }
-.status-badge--revealed { color: var(--green-phos); box-shadow: var(--green-glow); }
-.status-badge--cancelled{ color: var(--red-err);    box-shadow: var(--red-glow); }
 
 /* ── Terminal Cards ──────────────────────────── */
 .terminal-card {
@@ -333,20 +161,7 @@ input::placeholder, textarea::placeholder {
   border-bottom-color: var(--green-phos);
 }
 
-/* ── Winner Badge ────────────────────────────── */
-.winner-badge {
-  display: inline-block;
-  font-family: var(--font-head);
-  font-size: 0.75rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--green-phos);
-  border: 1px solid var(--green-phos);
-  border-radius: 2px;
-  padding: 6px 16px;
-  box-shadow: var(--green-glow);
-  animation: glowPulse 2s ease-in-out infinite;
-}
+
 
 /* ── Section Dividers ────────────────────────── */
 .section-divider {
@@ -463,15 +278,6 @@ input::placeholder, textarea::placeholder {
 }
 
 /* ── Animations ──────────────────────────────── */
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0; }
-}
-
-@keyframes glowPulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
-}
 
 @keyframes scanIn {
   from { opacity: 0; transform: translateY(6px); clip-path: inset(100% 0 0 0); }
@@ -497,10 +303,6 @@ input::placeholder, textarea::placeholder {
   100%{ transform: translateX(0); }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
 
 /* Page transition */
 @keyframes pageFadeIn {
@@ -514,7 +316,5 @@ input::placeholder, textarea::placeholder {
 
 /* ── Responsive ──────────────────────────────── */
 @media (max-width: 768px) {
-  html { font-size: 14px; }
-  #root { border-left: none; }
   .status-pipeline { flex-wrap: wrap; gap: 4px; }
 }

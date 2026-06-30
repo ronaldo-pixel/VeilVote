@@ -73,34 +73,6 @@ const terminalTheme = createTheme({
   },
 
   components: {
-    /* ── CssBaseline ── */
-    MuiCssBaseline: {
-      styleOverrides: {
-        '*': { boxSizing: 'border-box' },
-        body: {
-          background: '#080c10',
-          color: '#e2e8f0',
-          fontFamily: "'IBM Plex Mono', 'Courier New', monospace",
-          WebkitFontSmoothing: 'antialiased',
-        },
-        /* Scanline overlay */
-        'body::before': {
-          content: '""',
-          pointerEvents: 'none',
-          position: 'fixed',
-          inset: 0,
-          zIndex: 9999,
-          background:
-            'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px)',
-        },
-        /* Scrollbar */
-        '::-webkit-scrollbar': { width: '6px', height: '6px' },
-        '::-webkit-scrollbar-track': { background: '#080c10' },
-        '::-webkit-scrollbar-thumb': { background: '#1e2a35', borderRadius: '0' },
-        '::-webkit-scrollbar-thumb:hover': { background: '#00f5d4' },
-      },
-    },
-
     /* ── Button ── */
     MuiButton: {
       defaultProps: { disableElevation: true, disableRipple: false },
