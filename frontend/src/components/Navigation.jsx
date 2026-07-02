@@ -52,7 +52,7 @@ const Navigation = () => {
     { label: 'proposals', path: '/proposals' },
     { label: 'create',    path: '/create-proposal' },
     { label: 'archive',   path: '/archive' },
-    ...(isKeyholder ? [{ label: 'decrypt', path: '/decryption' }] : []),
+    ...(isKeyholder ? [{ label: 'Keyholder', path: '/keyholder' }] : []),
   ];
 
   const menuItemsSx = {

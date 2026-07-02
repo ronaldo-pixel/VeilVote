@@ -6,7 +6,7 @@ const path = require("path");
 // CONFIG
 // =============================================================================
 
-const VOTING_CONTRACT_ID = "CBV4HLMB66HNAT5ZVNHMWUDZS67AR4AIAX6Q3CCQT5URVQBKFMNPV2FP";
+const VOTING_CONTRACT_ID = "CDYW3OJJEIO7YIFMBQMLO5DI7C7MRUVWL65F3VV7SHGMFDOJ2H565SXF";
 const NETWORK = "testnet";
 
 const KEYHOLDER_IDENTITY_0 = "keyholder0";

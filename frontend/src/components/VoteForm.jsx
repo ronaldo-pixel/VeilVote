@@ -22,7 +22,7 @@ const bodyFont = '"IBM Plex Mono", "Courier New", monospace';
 const dataBox = {
   p: 1.5,
   background: 'rgba(0,0,0,0.3)',
-  border: '1px solid #1e2a35',
+  border: '1px solid white',
   borderRadius: '2px',
   mb: 1.5,
 };
@@ -51,7 +51,7 @@ const ScanBar = () => (
 const VoteForm = ({ proposal, onVoteSuccess }) => {
   const { submitVote, userAddress, checkEligibility, getUserBalance } = useVoting();
 
-  const [selectedOption,     setSelectedOption]     = useState('');
+  const [selectedOption, setSelectedOption] = useState(null);
   const [loading,            setLoading]            = useState(false);
   const [stepIndex,          setStepIndex]          = useState(-1);
   const [completedSteps,     setCompletedSteps]     = useState([]);
@@ -70,7 +70,7 @@ const VoteForm = ({ proposal, onVoteSuccess }) => {
   }, [proposal?.id, userAddress, checkEligibility]);
 
   const handleSubmitVote = async () => {
-    if (!selectedOption || !userAddress) {
+    if (selectedOption === null || !userAddress) {
       setError('select an option and connect your wallet');
       return;
     }
@@ -89,8 +89,9 @@ const VoteForm = ({ proposal, onVoteSuccess }) => {
       setStepIndex(1);
 
       // Step 1 — encrypt vote
-      const optionIndex = proposal.options.indexOf(selectedOption);
+      const optionIndex = selectedOption;
       const balanceStroops = await getUserBalance();
+      
       
       let weight = balanceStroops;
       if (proposal.votingMode === 'quadratic') {
@@ -106,9 +107,23 @@ const VoteForm = ({ proposal, onVoteSuccess }) => {
         balanceStroops,
         votingModeCode
       );
-
+      
       setCompletedSteps(p => [...p, 1]);
       setStepIndex(2);
+      /*
+
+      console.log("voteWeight:", circuitInput.voteWeight);
+      console.log("voteVector:", circuitInput.voteVector);
+      console.log("nonces:", circuitInput.nonces);
+
+      console.log(
+        JSON.stringify(
+          circuitInput,
+          (_, v) => typeof v === "bigint" ? v.toString() : v,
+          2
+        )
+      );
+      */
 
       // Step 2 — generate ZK proof
       const { proof, publicSignals } = await zkProofUtils.generateVoteProof(circuitInput);
@@ -127,7 +142,7 @@ const VoteForm = ({ proposal, onVoteSuccess }) => {
       setCompletedSteps(p => [...p, 3]);
       setConfirmationData({
         nullifier,
-        option:     selectedOption,
+        option:     proposal.options[selectedOption],
         optionIdx:  optionIndex,
         weight:     Number(weight),
         weightFmt:  voteWeightCalculator.formatWeight(proposal.votingMode, balanceStroops),
@@ -151,7 +166,7 @@ const VoteForm = ({ proposal, onVoteSuccess }) => {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1 }}>
         <ScanBar />
-        <Typography sx={{ fontFamily: bodyFont, fontSize: '0.7rem', color: '#64748b', letterSpacing: '0.06em' }}>
+        <Typography sx={{ fontFamily: bodyFont, fontSize: '0.85rem', color: 'white', letterSpacing: '0.06em' }}>
           &gt; checking eligibility...
         </Typography>
       </Box>
@@ -171,7 +186,7 @@ const VoteForm = ({ proposal, onVoteSuccess }) => {
   return (
     <>
       <Typography sx={{
-        fontFamily: monoFont, fontSize: '0.62rem', color: '#64748b',
+        fontFamily: monoFont, fontSize: '0.85rem', color: 'white',
         letterSpacing: '0.15em', textTransform: 'uppercase', mb: '1.5rem',
       }}>
         {'/* select option */'}
@@ -179,20 +194,20 @@ const VoteForm = ({ proposal, onVoteSuccess }) => {
 
       <Box sx={{ mb: '1.5rem' }}>
         {proposal.options.map((option, idx) => {
-          const isSelected = selectedOption === option;
+          const isSelected = selectedOption === idx;
           return (
             <Box
               key={idx}
-              onClick={() => !loading && setSelectedOption(option)}
+              onClick={() => !loading && setSelectedOption(idx)}
               sx={{
-                display: 'flex', alignItems: 'center', gap: '1rem',
+                display: 'flex', alignItems: 'center', gap: '0.85rem',
                 padding: '10px 14px', mb: '6px',
                 border: '1px solid',
                 borderColor: isSelected ? 'rgba(0,245,212,0.45)' : '#1e2a35',
                 borderRadius: '2px',
                 background: isSelected ? 'rgba(0,245,212,0.05)' : 'transparent',
                 cursor: loading ? 'not-allowed' : 'pointer',
-                color: isSelected ? '#00f5d4' : '#64748b',
+                color: isSelected ? '#00f5d4' : 'white',
                 transition: 'all 0.15s',
                 '&:hover': loading ? {} : {
                   borderColor: 'rgba(0,245,212,0.3)',
@@ -202,21 +217,21 @@ const VoteForm = ({ proposal, onVoteSuccess }) => {
               }}
             >
               <Typography sx={{
-                fontFamily: monoFont, fontSize: '0.65rem',
-                color: isSelected ? '#00f5d4' : '#334155',
+                fontFamily: monoFont, fontSize: '0.85rem',
+                color: isSelected ? '#00f5d4' : 'white',
                 minWidth: 28, flexShrink: 0,
               }}>
                 [{idx + 1}]
               </Typography>
               <Typography sx={{
-                fontFamily: bodyFont, fontSize: '0.82rem',
+                fontFamily: bodyFont, fontSize: '0.85rem',
                 color: 'inherit', flex: 1, letterSpacing: '0.03em',
               }}>
                 {option}
               </Typography>
               {isSelected && (
                 <Typography sx={{
-                  fontFamily: monoFont, fontSize: '0.62rem',
+                  fontFamily: monoFont, fontSize: '0.85rem',
                   letterSpacing: '0.1em', color: '#00f5d4', flexShrink: 0,
                 }}>
                   ◀ SELECTED
@@ -243,15 +258,15 @@ const VoteForm = ({ proposal, onVoteSuccess }) => {
             return (
               <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: '0.75rem', mb: '4px' }}>
                 <Typography sx={{
-                  fontFamily: monoFont, fontSize: '0.6rem',
-                  color: done ? '#39ff14' : active ? '#00f5d4' : '#334155',
+                  fontFamily: monoFont, fontSize: '0.85rem',
+                  color: done ? '#39ff14' : active ? '#00f5d4' : 'white',
                   minWidth: 14, flexShrink: 0,
                 }}>
                   {done ? '✓' : active ? '▶' : '·'}
                 </Typography>
                 <Typography sx={{
-                  fontFamily: bodyFont, fontSize: '0.7rem',
-                  color: done ? '#39ff14' : active ? '#00f5d4' : '#334155',
+                  fontFamily: bodyFont, fontSize: '0.85rem',
+                  color: done ? '#39ff14' : active ? '#00f5d4' : 'white',
                   letterSpacing: '0.04em',
                 }}>
                   {step}
@@ -267,13 +282,13 @@ const VoteForm = ({ proposal, onVoteSuccess }) => {
         fullWidth
         disableRipple
         onClick={handleSubmitVote}
-        disabled={!selectedOption || loading}
+        disabled={selectedOption === null || loading}
         sx={{
-          fontFamily: monoFont, fontSize: '0.68rem', fontWeight: 400,
+          fontFamily: monoFont, fontSize: '0.85rem', fontWeight: 400,
           letterSpacing: '0.14em', textTransform: 'uppercase',
-          color: !selectedOption || loading ? '#334155' : '#00f5d4',
+          color: selectedOption === null || loading ? 'white' : '#00f5d4',
           background: 'transparent', border: '1px solid',
-          borderColor: !selectedOption || loading ? '#1e2a35' : 'rgba(0,245,212,0.45)',
+          borderColor: selectedOption === null || loading ? '#1e2a35' : 'rgba(0,245,212,0.45)',
           borderRadius: '2px', py: 1.25,
           transition: 'background 0.15s, box-shadow 0.15s',
           '&:hover:not(:disabled)': {
@@ -308,7 +323,7 @@ const VoteForm = ({ proposal, onVoteSuccess }) => {
         }}
       >
         <DialogTitle sx={{
-          fontFamily: monoFont, fontSize: '0.82rem', fontWeight: 400,
+          fontFamily: monoFont, fontSize: '0.85rem', fontWeight: 400,
           letterSpacing: '0.1em', textTransform: 'uppercase',
           color: '#39ff14', textShadow: '0 0 10px rgba(57,255,20,0.4)',
           borderBottom: '1px solid rgba(57,255,20,0.15)',
@@ -326,7 +341,7 @@ const VoteForm = ({ proposal, onVoteSuccess }) => {
 
         <DialogContent sx={{ pt: 2.5, pb: 1 }}>
           <Box sx={dataBox}>
-            <Typography sx={{ fontFamily: monoFont, fontSize: '0.58rem', color: '#64748b', letterSpacing: '0.15em', textTransform: 'uppercase', mb: '0.4rem' }}>
+            <Typography sx={{ fontFamily: monoFont, fontSize: '0.85rem', color: 'white', letterSpacing: '0.15em', textTransform: 'uppercase', mb: '0.4rem' }}>
               SELECTED OPTION
             </Typography>
             <Typography sx={{ fontFamily: monoFont, fontSize: '0.85rem', color: '#e2e8f0', letterSpacing: '0.04em' }}>
@@ -336,7 +351,7 @@ const VoteForm = ({ proposal, onVoteSuccess }) => {
 
           {confirmationData?.votingMode === 'quadratic' && (
             <Box sx={dataBox}>
-              <Typography sx={{ fontFamily: monoFont, fontSize: '0.58rem', color: '#64748b', letterSpacing: '0.15em', textTransform: 'uppercase', mb: '0.4rem' }}>
+              <Typography sx={{ fontFamily: monoFont, fontSize: '0.85rem', color: 'white', letterSpacing: '0.15em', textTransform: 'uppercase', mb: '0.4rem' }}>
                 VOTE WEIGHT (QUADRATIC)
               </Typography>
               <Typography sx={{ fontFamily: monoFont, fontSize: '0.85rem', color: '#00f5d4', letterSpacing: '0.04em' }}>
@@ -346,25 +361,25 @@ const VoteForm = ({ proposal, onVoteSuccess }) => {
           )}
 
           <Box sx={dataBox}>
-            <Typography sx={{ fontFamily: monoFont, fontSize: '0.58rem', color: '#64748b', letterSpacing: '0.15em', textTransform: 'uppercase', mb: '0.4rem' }}>
+            <Typography sx={{ fontFamily: monoFont, fontSize: '0.85rem', color: 'white', letterSpacing: '0.15em', textTransform: 'uppercase', mb: '0.4rem' }}>
               TIMESTAMP
             </Typography>
-            <Typography sx={{ fontFamily: bodyFont, fontSize: '0.75rem', color: '#64748b', letterSpacing: '0.04em' }}>
+            <Typography sx={{ fontFamily: bodyFont, fontSize: '0.75rem', color: 'white', letterSpacing: '0.04em' }}>
               {confirmationData?.timestamp}
             </Typography>
           </Box>
 
           <Box sx={dataBox}>
-            <Typography sx={{ fontFamily: monoFont, fontSize: '0.58rem', color: '#64748b', letterSpacing: '0.15em', textTransform: 'uppercase', mb: '0.4rem' }}>
+            <Typography sx={{ fontFamily: monoFont, fontSize: '0.85rem', color: 'white', letterSpacing: '0.15em', textTransform: 'uppercase', mb: '0.4rem' }}>
               NULLIFIER
             </Typography>
-            <Typography sx={{ fontFamily: bodyFont, fontSize: '0.65rem', color: '#334155', wordBreak: 'break-all', lineHeight: 1.65, letterSpacing: '0.02em' }}>
+            <Typography sx={{ fontFamily: bodyFont, fontSize: '0.85rem', color: 'white', wordBreak: 'break-all', lineHeight: 1.65, letterSpacing: '0.02em' }}>
               {confirmationData?.nullifier}
             </Typography>
           </Box>
 
-          <Box sx={{ borderLeft: '2px solid #1e2a35', pl: 1.5, mt: 0.5, py: 0.25 }}>
-            <Typography sx={{ fontFamily: bodyFont, fontSize: '0.68rem', color: '#334155', lineHeight: 1.7, letterSpacing: '0.03em' }}>
+          <Box sx={{ borderLeft: '2px solid white', pl: 1.5, mt: 0.5, py: 0.25 }}>
+            <Typography sx={{ fontFamily: bodyFont, fontSize: '0.85rem', color: 'white', lineHeight: 1.7, letterSpacing: '0.03em' }}>
               &gt; vote stored on-chain — cannot be changed or reversed
             </Typography>
           </Box>
@@ -375,9 +390,9 @@ const VoteForm = ({ proposal, onVoteSuccess }) => {
             onClick={() => setShowConfirmation(false)}
             disableRipple
             sx={{
-              fontFamily: monoFont, fontSize: '0.65rem',
+              fontFamily: monoFont, fontSize: '0.85rem',
               letterSpacing: '0.12em', textTransform: 'uppercase',
-              color: '#64748b', border: '1px solid #2e3e4d',
+              color: 'white', border: '1px solid #2e3e4d',
               borderRadius: '2px', px: 2, py: 0.75,
               background: 'transparent', transition: 'all 0.15s',
               '&:hover': { borderColor: 'rgba(0,245,212,0.4)', color: '#00f5d4', background: 'rgba(0,245,212,0.04)' },

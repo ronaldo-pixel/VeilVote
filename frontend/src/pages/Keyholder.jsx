@@ -44,7 +44,7 @@ const BlinkCursor = () => (
   }} />
 );
 
-const Decryption = () => {
+const Keyholder = () => {
   const navigate = useNavigate();
   const {
     userAddress,
@@ -203,6 +203,35 @@ const Decryption = () => {
     }
   };
 
+  
+  function babyStepGiantStep(babyJub, mg, maxRange) {
+    const F = babyJub.F;
+    const G = babyJub.Base8;
+    const m = BigInt(Math.ceil(Math.sqrt(Number(maxRange))));
+
+    // baby steps: table of j*G for j in [0, m)
+    const table = new Map();
+    let cur = babyJub.mulPointEscalar(G, 0n);
+    for (let j = 0n; j < m; j++) {
+      const key = `${F.toObject(cur[0])},${F.toObject(cur[1])}`;
+      table.set(key, j);
+      cur = babyJub.addPoint(cur, G);
+    }
+
+    // giant steps: mg - i*m*G for i in [0, m)
+    const mG = babyJub.mulPointEscalar(G, m);
+    const negMG = [F.neg(mG[0]), mG[1]];
+    let gamma = mg;
+    for (let i = 0n; i < m; i++) {
+      const key = `${F.toObject(gamma[0])},${F.toObject(gamma[1])}`;
+      if (table.has(key)) {
+        return i * m + table.get(key);
+      }
+      gamma = babyJub.addPoint(gamma, negMG);
+    }
+    return null; // not found within maxRange
+  }
+
   // Handle Final Tally Submission (with brute-force discrete log finder)
   const handleFinalTally = async (proposalId, options) => {
     if (!babyJub) return;
@@ -236,20 +265,13 @@ const Decryption = () => {
         const negSum = [F.neg(sumPartials[0]), sumPartials[1]]; // Twisted-Edwards negation is (-x, y)
         const mg = babyJub.addPoint(c2Pt, negSum);
 
-        // Brute force discrete log: Find v such that v * G == mg
-        let foundTally = null;
-        for (let v = 0n; v <= 1000n; v++) {
-          const checkPt = babyJub.mulPointEscalar(G, v);
-          if (F.eq(checkPt[0], mg[0]) && F.eq(checkPt[1], mg[1])) {
-            foundTally = Number(v);
-            break;
-          }
-        }
+        const maxRange = BigInt(100000000n);
+        const foundTally = babyStepGiantStep(babyJub, mg, maxRange);
 
         if (foundTally === null) {
           throw new Error(`Failed to solve discrete log for option ${idx}. Tally verification failed.`);
         }
-        tallies.push(foundTally);
+        tallies.push(Number(foundTally));
       }
 
       await submitFinalTally(proposalId, tallies);
@@ -530,4 +552,4 @@ const Decryption = () => {
   );
 };
 
-export default Decryption;
+export default Keyholder;

@@ -44,7 +44,7 @@ const ProposalStatusTimeline = ({ proposal, currentBlock = 150 }) => {
         my: 3,
         p: 2.5,
         background: '#0d1117',
-        border: '1px solid rgba(226,232,240,0.08)',
+        border: `1px solid ${accentColor}`,
         borderLeft: `3px solid ${accentColor}`,
         borderRadius: '2px',
         backgroundImage:

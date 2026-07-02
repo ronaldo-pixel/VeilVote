@@ -499,7 +499,7 @@ const ProposalList = () => {
                   fontFamily: 'var(--font-head)',
                   fontSize: '0.62rem',
                   letterSpacing: '0.12em',
-                  color: isActive ? 'var(--cyan)' : count === 0 ? 'var(--border-base)' : 'var(--text-secondary)',
+                  color: isActive ? 'var(--cyan)' : 'white',
                   background: 'transparent',
                   border: 'none',
                   borderBottom: isActive ? '2px solid var(--cyan)' : '2px solid transparent',

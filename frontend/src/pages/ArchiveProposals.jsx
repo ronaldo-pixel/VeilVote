@@ -95,7 +95,7 @@ const ArchiveProposals = () => {
                   fontSize: '0.72rem',
                   letterSpacing: '0.08em',
                   textTransform: 'lowercase',
-                  color: active ? '#00f5d4' : 'rgba(226,232,240,0.35)',
+                  color: active ? '#00f5d4' : 'white',
                   background: active ? 'rgba(0,245,212,0.06)' : 'transparent',
                   borderBottom: active ? '1px solid #00f5d4' : '1px solid transparent',
                   borderRight: '1px solid rgba(226,232,240,0.06)',
@@ -122,7 +122,7 @@ const ArchiveProposals = () => {
             display: 'flex',
             alignItems: 'center',
             gap: 1,
-            border: '1px solid rgba(226,232,240,0.08)',
+            border: '1px solid var(--cyan)',
             borderRadius: '2px',
             px: 1.5,
             py: 0.75,
@@ -152,14 +152,14 @@ const ArchiveProposals = () => {
             sx={{
               fontFamily: monoFont,
               fontSize: '0.78rem',
-              color: '#e2e8f0',
+              color: 'white',
               background: 'transparent',
               border: 'none',
               outline: 'none',
               width: 220,
               letterSpacing: '0.04em',
               '&::placeholder': {
-                color: 'rgba(226,232,240,0.18)',
+                color: 'white',
               },
             }}
           />

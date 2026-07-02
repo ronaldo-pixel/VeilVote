@@ -200,7 +200,8 @@ export const encryptionUtils = {
       const bytes = new Uint8Array(32);
       window.crypto.getRandomValues(bytes);
       bytes[0] &= 0x3f;
-      return BigInt("0x" + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(''));
+      const random =  BigInt("0x" + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(''));
+      return random % 2736030358979909402780800718157159386076813972158567259200215660948447373041n;
     });
 
     const encryptedVote = [];

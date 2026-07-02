@@ -7,6 +7,7 @@ import {
   scValToNative,
   xdr,
   Address,
+  Horizon
 } from '@stellar/stellar-sdk';
 import { Server, assembleTransaction } from '@stellar/stellar-sdk/rpc';
 import {
@@ -39,30 +40,39 @@ const ERR = (...args) => console.error('[VotingContext ERROR]', ...args);
 // ── Helper to decode Proposal Struct ──────────────────────────────────────────
 function decodeProposal(raw) {
   return {
-    id:                   String(raw.id),
-    creator:              raw.creator,
-    description:          raw.description ?? '',
-    options:              Array.from(raw.options ?? []),
-    votingMode:           MODE_MAP[raw.voting_mode?.tag] ?? 'normal',
-    createdAtBlock:       Number(raw.created_at_block ?? 0),
-    duration:             Number(raw.duration ?? 0),
-    startBlock:           Number(raw.start_block ?? 0),
-    endBlock:             Number(raw.end_block ?? 0),
+    id: String(raw.id),
+    creator: raw.creator,
+    description: raw.description ?? '',
+    options: Array.from(raw.options ?? []),
+
+    votingMode:
+      MODE_MAP[raw.voting_mode?.[0]] ?? 'normal',
+
+    createdAtBlock: Number(raw.created_at_block ?? 0),
+    duration: Number(raw.duration ?? 0),
+    startBlock: Number(raw.start_block ?? 0),
+    endBlock: Number(raw.end_block ?? 0),
+
     eligibilityThreshold: BigInt(raw.eligibility_threshold ?? 0),
-    minVoterThreshold:    Number(raw.min_voter_threshold ?? 0),
-    status:               STATUS_MAP[raw.status?.tag] ?? 'PENDING_DKG',
+    minVoterThreshold: Number(raw.min_voter_threshold ?? 0),
+
+    status:
+      STATUS_MAP[raw.status?.[0]] ?? 'PENDING_DKG',
+
     electionPublicKey: {
       x: String(raw.election_public_key?.x ?? '0'),
       y: String(raw.election_public_key?.y ?? '1'),
     },
-    voteCount:            Number(raw.vote_count ?? 0),
-    totalParticipation:   Number(raw.vote_count ?? 0),
-    shareCount:           Number(raw.share_count ?? 0),
-    partialCount:         Number(raw.partial_count ?? 0),
-    winningOption:        Number(raw.winning_option ?? 0),
-    endedAtBlock:         0,
-    finalResult:          null,
-    winner:               null,
+
+    voteCount: Number(raw.vote_count ?? 0),
+    totalParticipation: Number(raw.vote_count ?? 0),
+    shareCount: Number(raw.share_count ?? 0),
+    partialCount: Number(raw.partial_count ?? 0),
+    winningOption: Number(raw.winning_option ?? 0),
+
+    endedAtBlock: 0,
+    finalResult: null,
+    winner: null,
   };
 }
 
@@ -83,6 +93,7 @@ function encodeProofForSoroban(proof) {
     const [yc0, yc1]   = yArr;
     return Buffer.concat([be(xc1, 32), be(xc0, 32), be(yc1, 32), be(yc0, 32)]);
   };
+  
 
   return xdr.ScVal.scvMap([
     new xdr.ScMapEntry({
@@ -192,6 +203,10 @@ async function invokeWrite(functionName, args, signerAddress) {
 
     const status = await server.getTransaction(response.hash);
 
+    //console.log("Transaction status:", status);
+    //console.log("resultMetaXdr:", status.resultMetaXdr);
+    //console.log("typeof resultMetaXdr:", typeof status.resultMetaXdr);
+    
     if (status.status === "SUCCESS") {
       return status;
     }
@@ -211,8 +226,13 @@ async function invokeWrite(functionName, args, signerAddress) {
 // ── Helper to extract return value from Soroban transaction status ───────────
 function getTxReturnValue(status) {
   if (!status.resultMetaXdr) return null;
+
   try {
-    const meta = xdr.TransactionMeta.fromXDR(status.resultMetaXdr, 'base64');
+    const meta =
+      typeof status.resultMetaXdr === "string"
+        ? xdr.TransactionMeta.fromXDR(status.resultMetaXdr, "base64")
+        : status.resultMetaXdr;
+
     let sorobanMeta;
     switch (meta.switch()) {
       case 3: // TransactionMetaV3
@@ -364,6 +384,7 @@ export const VotingProvider = ({ children }) => {
         }
       }
 
+
       setProposals(fetched);
 
       // Check voted proposals
@@ -456,7 +477,20 @@ export const VotingProvider = ({ children }) => {
     }
   }, []);
 
-  const getActiveProposals   = useCallback(() => proposals.filter(p => p.status === 'PENDING_DKG' || p.status === 'ACTIVE'),    [proposals]);
+  const getCurrentBlock = async () => {
+    const server = new Server(import.meta.env.VITE_SOROBAN_RPC_URL);
+    const latestLedger = await server.getLatestLedger();
+    return Number(latestLedger.sequence);
+  };
+
+  const getActiveProposals   = useCallback(() => {
+    const currentBlock = getCurrentBlock();
+    return proposals.filter(p =>
+      p.status === 'PENDING_DKG' ||
+      (p.status === 'ACTIVE' && currentBlock < p.endBlock)
+    );
+  }, [proposals]);
+
   const getArchivedProposals = useCallback(() => proposals.filter(p => p.status === 'REVEALED'    || p.status === 'CANCELLED'),  [proposals]);
   const getEndedProposals    = useCallback(() => proposals.filter(p => p.status === 'ENDED'),                                     [proposals]);
 
@@ -691,11 +725,8 @@ export const VotingProvider = ({ children }) => {
       const threshold = BigInt(raw.eligibility_threshold ?? 0);
       if (threshold === 0n) return true;
 
-      const server = new Server(import.meta.env.VITE_SOROBAN_RPC_URL);
-      const acct   = await server.getAccount(address);
-      const xlm    = acct.balances.find(b => b.asset_type === 'native');
-      const stroops = BigInt(Math.round(parseFloat(xlm?.balance ?? '0') * 1e7));
-      return stroops >= threshold;
+      const bal = await getUserBalance();
+      return bal >= threshold;
     } catch {
       return false;
     }
@@ -704,13 +735,36 @@ export const VotingProvider = ({ children }) => {
   // ── getUserBalance ─────────────────────────────────────────────────────────
   const getUserBalance = useCallback(async () => {
     const address = userAddressRef.current;
-    if (!address) return 0n;
+
+    if (!address) {
+      console.warn("[getUserBalance] No wallet connected.");
+      return 0n;
+    }
+
     try {
-      const server = new Server(import.meta.env.VITE_SOROBAN_RPC_URL);
-      const acct   = await server.getAccount(address);
-      const xlm    = acct.balances.find(b => b.asset_type === 'native');
-      return BigInt(Math.round(parseFloat(xlm?.balance ?? '0') * 1e7));
-    } catch {
+      // Testnet Horizon
+      const horizon = new Horizon.Server("https://horizon-testnet.stellar.org");
+
+      const account = await horizon.loadAccount(address);
+
+      const xlmBalance = account.balances.find(
+        (balance) => balance.asset_type === "native"
+      );
+
+      if (!xlmBalance) {
+        console.warn("[getUserBalance] No native XLM balance found.");
+        return 0n;
+      }
+
+      // Convert XLM → stroops (1 XLM = 10,000,000 stroops)
+      const stroops = BigInt(
+        Math.round(parseFloat(xlmBalance.balance))
+      );
+
+
+      return stroops;
+    } catch (err) {
+      console.error("[getUserBalance] Failed to fetch balance:", err);
       return 0n;
     }
   }, []);

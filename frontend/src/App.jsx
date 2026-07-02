@@ -8,7 +8,7 @@ import ProposalList from './pages/ProposalList';
 import ProposalCreate from './pages/ProposalCreate';
 import ProposalDetail from './pages/ProposalDetail';
 import ArchiveProposals from './pages/ArchiveProposals';
-import Decryption from './pages/Decryption';
+import Keyholder from './pages/Keyholder';
 import './App.css';
 
 /* ─────────────────────────────────────────────
@@ -473,7 +473,7 @@ function App() {
             <Route path="/proposal/:id"   element={<ProposalDetail />} />
             <Route path="/create-proposal"element={<ProposalCreate />} />
             <Route path="/archive"        element={<ArchiveProposals />} />
-            <Route path="/decryption"     element={<Decryption />} />
+            <Route path="/keyholder"     element={<Keyholder />} />
           </Routes>
         </Router>
       </VotingProvider>
