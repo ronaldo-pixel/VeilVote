@@ -1,12 +1,16 @@
 # ---------- Stage 1: Build ----------
-FROM node:20-alpine AS builder
+FROM node:22-bookworm AS builder
 
 WORKDIR /app
 
-# Install dependencies first (better layer caching)
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY package*.json ./
 RUN npm ci
-
 # Copy the rest of the source (public/circuits/*.wasm, *.zkey are already present)
 COPY . .
 

@@ -292,7 +292,7 @@ const Dashboard = () => {
                 </Box>
                 <Button
                   disableRipple
-                  onClick={() => navigate('/decryption')}
+                  onClick={() => navigate('/keyholder')}
                   sx={{
                     fontFamily: monoFont,
                     fontSize: '0.65rem',
@@ -313,7 +313,7 @@ const Dashboard = () => {
                     },
                   }}
                 >
-                  [ DECRYPTION PANEL ]
+                  [ KEYHOLDER PANEL ]
                 </Button>
               </Box>
             </Box>
