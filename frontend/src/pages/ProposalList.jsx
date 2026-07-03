@@ -81,20 +81,34 @@ if (typeof document !== 'undefined') {
 }
 
 const STATUS_CONFIG = {
-  ACTIVE:      { color: 'var(--cyan)',       glow: 'var(--cyan-glow)',   label: 'ACTIVE' },
-  PENDING_DKG: { color: 'var(--amber)',      glow: 'var(--amber-glow)',  label: 'PENDING_DKG' },
-  ENDED:       { color: '#64748b',           glow: 'none',               label: 'ENDED' },
-  REVEALED:    { color: 'var(--green-phos)', glow: 'var(--green-glow)',  label: 'REVEALED' },
-  CANCELLED:   { color: 'var(--red-err)',    glow: '0 0 8px rgba(255,60,60,0.7)', label: 'CANCELLED' },
+  ACTIVE:               { color: 'var(--cyan)',       glow: 'var(--cyan-glow)',   label: 'ACTIVE' },
+  PENDING_DKG:          { color: 'var(--amber)',      glow: 'var(--amber-glow)',  label: 'PENDING_DKG' },
+  AWAITING_CLOSURE:     { color: 'var(--amber)',      glow: 'var(--amber-glow)',  label: 'AWAITING_CLOSURE' },
+  ENDED:                { color: '#64748b',           glow: 'none',               label: 'ENDED' },
+  AWAITING_FINAL_TALLY: { color: 'var(--amber)',      glow: 'var(--amber-glow)',  label: 'AWAITING_TALLY' },
+  REVEALED:             { color: 'var(--green-phos)', glow: 'var(--green-glow)',  label: 'REVEALED' },
+  CANCELLED:            { color: 'var(--red-err)',    glow: '0 0 8px rgba(255,60,60,0.7)', label: 'CANCELLED' },
 };
 
-const TerminalProposalCard = ({ proposal, onVote, index }) => {
+// Derived display status — doesn't change canonical proposal.status,
+// just tells the UI what action is pending right now.
+const getEffectiveStatus = (proposal, currentBlock) => {
+  if (proposal.status === 'ACTIVE' && currentBlock != null && currentBlock > proposal.endBlock) {
+    return 'AWAITING_CLOSURE';
+  }
+  if (proposal.status === 'ENDED' && (proposal.partialCount ?? 0) >= 3) {
+    return 'AWAITING_FINAL_TALLY';
+  }
+  return proposal.status;
+};
+const TerminalProposalCard = ({ proposal, onVote, index, currentBlock }) => {
   const [hovered, setHovered] = useState(false);
   const [typewriterDone, setTypewriterDone] = useState(false);
   const [typewriterText, setTypewriterText] = useState('');
   const TYPEWRITER_MSG = 'generating keys...';
 
-  const cfg = STATUS_CONFIG[proposal.status] || STATUS_CONFIG.ACTIVE;
+  const effectiveStatus = getEffectiveStatus(proposal, currentBlock);
+  const cfg = STATUS_CONFIG[effectiveStatus] || STATUS_CONFIG.ACTIVE;
 
   useEffect(() => {
     if (proposal.status !== 'PENDING_DKG') return;
@@ -135,7 +149,7 @@ const TerminalProposalCard = ({ proposal, onVote, index }) => {
     border: `1px solid ${cfg.color}`,
     padding: '2px 6px',
     borderRadius: '2px',
-    animation: ['ACTIVE', 'PENDING_DKG'].includes(proposal.status)
+    animation: ['ACTIVE', 'PENDING_DKG', 'AWAITING_CLOSURE', 'AWAITING_FINAL_TALLY'].includes(effectiveStatus)
       ? 'glowPulse 2s ease-in-out infinite' : 'none',
   };
 
@@ -217,6 +231,28 @@ const TerminalProposalCard = ({ proposal, onVote, index }) => {
             verticalAlign: 'middle',
             animation: typewriterDone ? 'blink 1s step-end infinite' : 'none',
           }} />
+        </div>
+      )}
+
+      {effectiveStatus === 'AWAITING_CLOSURE' && (
+        <div style={{
+          fontSize: '0.7rem',
+          color: 'var(--amber)',
+          marginBottom: '0.75rem',
+          fontFamily: 'var(--font-mono)',
+        }}>
+          &gt; voting ended — awaiting closure
+        </div>
+      )}
+
+      {effectiveStatus === 'AWAITING_FINAL_TALLY' && (
+        <div style={{
+          fontSize: '0.7rem',
+          color: 'var(--amber)',
+          marginBottom: '0.75rem',
+          fontFamily: 'var(--font-mono)',
+        }}>
+          &gt; decryption complete — awaiting final tally
         </div>
       )}
 
@@ -348,7 +384,8 @@ const EmptyState = ({ userAddress, onCreate, filterStatus }) => {
 
 const ProposalList = () => {
   const navigate = useNavigate();
-  const { proposals, initializeProposals, userAddress } = useVoting();
+  const { proposals, initializeProposals, userAddress, currentBlock } = useVoting();
+
   const [filterStatus, setFilterStatus] = useState('all');
   const [loading, setLoading] = useState(true);
 
@@ -357,21 +394,25 @@ const ProposalList = () => {
   }, [initializeProposals]);
 
   const filterTabs = [
-    { value: 'all',       label: 'ALL' },
-    { value: 'pending',   label: 'PENDING DKG' },
-    { value: 'active',    label: 'VOTING OPEN' },
-    { value: 'ended',     label: 'ENDED' },
-    { value: 'revealed',  label: 'REVEALED' },
-    { value: 'cancelled', label: 'CANCELLED' },
+    { value: 'all',                  label: 'ALL' },
+    { value: 'pending',              label: 'PENDING DKG' },
+    { value: 'active',               label: 'VOTING OPEN' },
+    { value: 'awaiting_closure',     label: 'AWAITING CLOSURE' },
+    { value: 'ended',                label: 'ENDED' },
+    { value: 'awaiting_final_tally', label: 'AWAITING TALLY' },
+    { value: 'revealed',             label: 'REVEALED' },
+    { value: 'cancelled',            label: 'CANCELLED' },
   ];
 
   const STATUS_FILTER_MAP = {
-    all:       () => true,
-    pending:   p => p.status === 'PENDING_DKG',
-    active:    p => p.status === 'ACTIVE',
-    ended:     p => p.status === 'ENDED',
-    revealed:  p => p.status === 'REVEALED',
-    cancelled: p => p.status === 'CANCELLED',
+    all:                  () => true,
+    pending:              p => getEffectiveStatus(p, currentBlock) === 'PENDING_DKG',
+    active:               p => getEffectiveStatus(p, currentBlock) === 'ACTIVE',
+    awaiting_closure:     p => getEffectiveStatus(p, currentBlock) === 'AWAITING_CLOSURE',
+    ended:                p => getEffectiveStatus(p, currentBlock) === 'ENDED',
+    awaiting_final_tally: p => getEffectiveStatus(p, currentBlock) === 'AWAITING_FINAL_TALLY',
+    revealed:             p => getEffectiveStatus(p, currentBlock) === 'REVEALED',
+    cancelled:            p => getEffectiveStatus(p, currentBlock) === 'CANCELLED',
   };
 
   const displayProposals = proposals.filter(STATUS_FILTER_MAP[filterStatus] ?? (() => true));
@@ -563,8 +604,10 @@ const ProposalList = () => {
                 proposal={proposal}
                 onVote={handleVote}
                 index={i}
+                currentBlock={currentBlock}
               />
             ))}
+       
           </div>
         ) : (
           <EmptyState

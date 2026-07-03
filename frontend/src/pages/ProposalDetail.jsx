@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Container, Box, Typography, Grid } from '@mui/material';
+import { Container, Box, Typography, Grid, Button } from '@mui/material';
 import { useVoting } from '../context/VotingContext';
 import ProposalStatusTimeline from '../components/ProposalStatusTimeline';
 import VoteForm from '../components/VoteForm';
 import { formatUtils } from '../utils/contractUtils';
+import { buildBabyjub } from 'circomlibjs';
 
 const monoFont = '"Share Tech Mono", "JetBrains Mono", "Courier New", monospace';
 const bodyFont = '"IBM Plex Mono", "Courier New", monospace';
@@ -24,6 +25,41 @@ const dataBox = {
   borderRadius: '2px',
   height: '100%',
 };
+
+const getEffectiveStatus = (proposal, currentBlock) => {
+  if (!proposal) return null;
+  if (proposal.status === 'ACTIVE' && currentBlock != null && currentBlock > proposal.endBlock) {
+    return 'AWAITING_CLOSURE';
+  }
+  if (proposal.status === 'ENDED' && (proposal.partialCount ?? 0) >= 3) {
+    return 'AWAITING_FINAL_TALLY';
+  }
+  return proposal.status;
+};
+
+function babyStepGiantStep(babyJub, mg, maxRange) {
+  const F = babyJub.F;
+  const G = babyJub.Base8;
+  const m = BigInt(Math.ceil(Math.sqrt(Number(maxRange))));
+
+  const table = new Map();
+  let cur = babyJub.mulPointEscalar(G, 0n);
+  for (let j = 0n; j < m; j++) {
+    const key = `${F.toObject(cur[0])},${F.toObject(cur[1])}`;
+    table.set(key, j);
+    cur = babyJub.addPoint(cur, G);
+  }
+
+  const mG = babyJub.mulPointEscalar(G, m);
+  const negMG = [F.neg(mG[0]), mG[1]];
+  let gamma = mg;
+  for (let i = 0n; i < m; i++) {
+    const key = `${F.toObject(gamma[0])},${F.toObject(gamma[1])}`;
+    if (table.has(key)) return i * m + table.get(key);
+    gamma = babyJub.addPoint(gamma, negMG);
+  }
+  return null;
+}
 
 const BlinkCursor = () => (
   <Box component="span" sx={{
@@ -64,12 +100,86 @@ const makeBar = (pct, winner = false) => {
   };
 };
 
+
 const ProposalDetail = () => {
+
+  const handleCloseVoting = async () => {
+    setActionLoading(true);
+    setActionError(null);
+    setActionSuccess(null);
+    try {
+      await closeVoting(proposal.id);
+      setActionSuccess('Voting closed — awaiting keyholder decryption.');
+      await getProposalDetail(id);
+    } catch (err) {
+      setActionError(err.message ?? 'Failed to close voting');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleFinalTally = async () => {
+    if (!babyJub) return;
+    setActionLoading(true);
+    setActionError(null);
+    setActionSuccess(null);
+    try {
+      const F = babyJub.F;
+      const G = babyJub.Base8;
+      const tallies = [];
+
+      for (let idx = 0; idx < proposal.options.length; idx++) {
+        const ct = await getEncryptedTally(proposal.id, idx);
+        if (!ct) throw new Error('Failed to load encrypted tally');
+
+        let sumPartials = babyJub.mulPointEscalar(G, 0n);
+        for (let k = 0; k < 3; k++) {
+          const rawPartials = await getPartialDecrypts(proposal.id, k);
+          if (!rawPartials) throw new Error(`Failed to fetch partial decrypts from keyholder index ${k}`);
+          const pt = rawPartials[idx];
+          const ptMont = [F.e(BigInt(pt.x)), F.e(BigInt(pt.y))];
+          sumPartials = babyJub.addPoint(sumPartials, ptMont);
+        }
+
+        const c2Pt = [F.e(BigInt(ct.c2.x)), F.e(BigInt(ct.c2.y))];
+        const negSum = [F.neg(sumPartials[0]), sumPartials[1]];
+        const mg = babyJub.addPoint(c2Pt, negSum);
+
+        const foundTally = babyStepGiantStep(babyJub, mg, BigInt(100000000n));
+        if (foundTally === null) {
+          throw new Error(`Failed to solve discrete log for option ${idx}. Tally verification failed.`);
+        }
+        tallies.push(Number(foundTally));
+      }
+
+      await submitFinalTally(proposal.id, tallies);
+      setActionSuccess('Final tallies compiled and results revealed!');
+      await getProposalDetail(id);
+    } catch (err) {
+      setActionError(err.message ?? 'Final tally compilation failed');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const { id } = useParams();
-  const { proposals, getProposalDetail, userAddress, userVotes, loading } = useVoting();
+  const {
+    proposals, getProposalDetail, userAddress, userVotes, loading,
+    currentBlock, isKeyholder,
+    closeVoting, submitFinalTally, getEncryptedTally, getPartialDecrypts,
+  } = useVoting();
   const [proposal,  setProposal]  = useState(null);
   const [pageLoad,  setPageLoad]  = useState(true);
   const [activeTab, setActiveTab] = useState('results');
+
+  const [babyJub, setBabyJub] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState(null);
+  const [actionSuccess, setActionSuccess] = useState(null);
+
+  useEffect(() => {
+    buildBabyjub().then(setBabyJub).catch(err => console.error('Failed to build BabyJubJub curve:', err));
+  }, []);
 
   useEffect(() => {
     getProposalDetail(id).then(detail => {
@@ -82,6 +192,7 @@ const ProposalDetail = () => {
     const found = proposals.find(p => p.id === id);
     if (found) setProposal(found);
   }, [proposals, id]);
+  const effectiveStatus = getEffectiveStatus(proposal, currentBlock);
 
   if (pageLoad) {
     return (
@@ -240,6 +351,65 @@ const ProposalDetail = () => {
             {partBar} {participationPct}%
           </Typography>
         </Box>
+        
+         {effectiveStatus === 'AWAITING_CLOSURE' && userAddress && (
+          <Box sx={{ background: '#0d1117', border: '1px solid #ffb800', borderRadius: '2px', p: 3, mb: '2rem' }}>
+            <SectionDivider>CLOSE VOTING</SectionDivider>
+            <Typography sx={{ fontFamily: bodyFont, fontSize: '0.78rem', color: '#e2e8f0', mb: '1rem', letterSpacing: '0.03em' }}>
+              &gt; voting period has ended (block {formatUtils.formatBlockNumber(proposal.endBlock)}) — close voting to begin the decryption process.
+            </Typography>
+            <Button
+              disableRipple
+              disabled={actionLoading}
+              onClick={handleCloseVoting}
+              sx={{
+                fontFamily: monoFont, fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase',
+                color: '#ffb800', background: 'transparent', border: '1px solid rgba(255,184,0,0.4)',
+                borderRadius: '2px', px: 2, py: 0.75,
+                '&:hover:not(:disabled)': { background: 'rgba(255,184,0,0.06)', borderColor: '#ffb800' },
+              }}
+            >
+              {actionLoading ? '[ CLOSING... ]' : '[ CLOSE VOTING ]'}
+            </Button>
+          </Box>
+        )}
+
+        {effectiveStatus === 'AWAITING_FINAL_TALLY' && isKeyholder && (
+          <Box sx={{ background: '#0d1117', border: '1px solid #39ff14', borderRadius: '2px', p: 3, mb: '2rem' }}>
+            <SectionDivider>SUBMIT FINAL TALLY</SectionDivider>
+            <Typography sx={{ fontFamily: bodyFont, fontSize: '0.78rem', color: '#e2e8f0', mb: '1rem', letterSpacing: '0.03em' }}>
+              &gt; all 3 keyholders have submitted partial decryptions — compile and reveal the final result.
+            </Typography>
+            <Button
+              disableRipple
+              disabled={actionLoading || !babyJub}
+              onClick={handleFinalTally}
+              sx={{
+                fontFamily: monoFont, fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase',
+                color: '#39ff14', background: 'transparent', border: '1px solid rgba(57,255,20,0.4)',
+                borderRadius: '2px', px: 2, py: 0.75,
+                '&:hover:not(:disabled)': { background: 'rgba(57,255,20,0.06)', borderColor: '#39ff14' },
+              }}
+            >
+              {actionLoading ? '[ COMPILING... ]' : '[ COMPILE & SUBMIT FINAL TALLY ]'}
+            </Button>
+          </Box>
+        )}
+
+        {(actionError || actionSuccess) && (
+          <Box sx={{
+            p: 2, mb: 3, border: '1px solid',
+            borderColor: actionError ? '#ff3c3c' : '#39ff14',
+            background: 'rgba(0,0,0,0.4)', borderRadius: '2px',
+          }}>
+            {actionError && (
+              <Typography sx={{ fontFamily: bodyFont, fontSize: '0.75rem', color: '#ff3c3c' }}>&gt; Error: {actionError}</Typography>
+            )}
+            {actionSuccess && (
+              <Typography sx={{ fontFamily: bodyFont, fontSize: '0.75rem', color: '#39ff14' }}>&gt; Success: {actionSuccess}</Typography>
+            )}
+          </Box>
+        )}
 
         {/* Tabs */}
         <Box sx={{ display: 'flex', borderBottom: '1px solid white', mb: '1.75rem' }}>
@@ -264,6 +434,8 @@ const ProposalDetail = () => {
             );
           })}
         </Box>
+        
+       
 
         {/* Results tab */}
         {activeTab === 'results' && (

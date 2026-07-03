@@ -256,6 +256,8 @@ function getTxReturnValue(status) {
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 export const VotingProvider = ({ children }) => {
+  const [currentBlock, setCurrentBlock] = useState(null);
+
   const [userAddress,    setUserAddress]    = useState(null);
   const [isKeyholder,    setIsKeyholder]    = useState(false);
   const [keyholderIndex, setKeyholderIndex] = useState(null);
@@ -299,6 +301,27 @@ export const VotingProvider = ({ children }) => {
       }
     });
   }, [resolveKeyholder]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const pollBlock = async () => {
+      try {
+        const block = await getCurrentBlock();
+        if (!cancelled) setCurrentBlock(block);
+      } catch (err) {
+        console.error('Failed to fetch current block:', err);
+      }
+    };
+
+    pollBlock();
+    const interval = setInterval(pollBlock, 15000); // adjust to your chain's block time
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   // ── connectWallet ─────────────────────────────────────────────────────────
   const connectWallet = useCallback(async () => {
@@ -856,6 +879,7 @@ export const VotingProvider = ({ children }) => {
     submitPartialDecryption,
     submitFinalTally,
     checkEligibility,
+    currentBlock,
     getUserBalance,
     getDKGStatus,
     getEncryptedTally,

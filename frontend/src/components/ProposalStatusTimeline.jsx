@@ -177,36 +177,7 @@ const ProposalStatusTimeline = ({ proposal, currentBlock = 150 }) => {
         </Box>
       )}
 
-      {/* Block progress */}
-      {!isRevealed && !isCancelled && (
-        <Box sx={{ mb: 2.5 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
-            <Typography
-              sx={{
-                fontFamily: "JetBrains Mono",
-                fontSize: '0.90rem',
-                color: 'rgba(255, 255, 255, 1)',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-              }}
-            >
-              block progress
-            </Typography>
-            
-          </Box>
-          <Typography
-            sx={{
-              fontFamily: '"JetBrains Mono", monospace',
-              fontSize: '0.75rem',
-              color: blockProgress >= 100 ? '#39ff14' : '#00f5d4',
-              letterSpacing: '0.02em',
-              userSelect: 'none',
-            }}
-          >
-            {blockBar} {blockProgress}%
-          </Typography>
-        </Box>
-      )}
+    
 
       
 
