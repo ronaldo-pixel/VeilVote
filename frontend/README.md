@@ -34,6 +34,15 @@ npm --version
 
 ---
 
+docker build \
+  --build-arg VITE_CONTRACT_ID=<your_contract_id> \
+  --build-arg VITE_SOROBAN_RPC_URL=https://soroban-testnet.stellar.org \
+  --build-arg VITE_NETWORK_PASSPHRASE="Test SDF Network ; September 2015" \
+  --build-arg VITE_KEYHOLDERS=G...,G...,G... \
+  -t privavote-frontend .
+
+docker run -p 8080:80 privavote-frontend
+
 # Install Dependencies
 
 From the `frontend` directory:

@@ -495,6 +495,7 @@ No individual keyholder can decrypt alone, but coordinated collusion remains an 
 - Approval voting
 - Ranked-choice voting
 - Conviction voting
+- Automating keyholder work
 
 ---
 

@@ -1,0 +1,14 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        VITE_CONTRACT_ID: ${VITE_CONTRACT_ID}
+        VITE_SOROBAN_RPC_URL: ${VITE_SOROBAN_RPC_URL:-https://soroban-testnet.stellar.org}
+        VITE_NETWORK_PASSPHRASE: ${VITE_NETWORK_PASSPHRASE:-Test SDF Network ; September 2015}
+        VITE_KEYHOLDERS: ${VITE_KEYHOLDERS}
+    image: veilvote-frontend:latest
+    ports:
+      - "8080:80"
+    restart: unless-stopped
